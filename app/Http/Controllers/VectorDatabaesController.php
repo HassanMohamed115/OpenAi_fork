@@ -30,9 +30,7 @@ class VectorDatabaesController extends Controller
             // $columns = ['property_name','plot_size','bua_size','maid_room','size','bedrooms','bathrooms',
             // 'parking_spaces','availability_status','construction_status','description','ownership_type','zone_name'];
     
-           // $result = $this->embeddingService->processTableData($table, $columns,'property_id');
-            $result = $this->embeddingService->storeEmbeddings($table, $columns);
-
+            $result = $this->embeddingService->processTableData($table, $columns,'property_id');
             return response()->json( $result);
         }catch(\Exception $e){
             return $e->getMessage();
@@ -42,19 +40,14 @@ class VectorDatabaesController extends Controller
     }
 
     public function test_embeddings(){
-        $userMessage = 'i want to know the project contain the highest available units';
+        $userMessage = 'عايز اعرف اسعار المشاريع';
          // Step 1: Generate embeddings for the user message
-        //$userEmbedding = $this->embeddingService->generateEmbeddings($userMessage);
-        $response = $this->client->embeddings()->create([
-            'model' => 'text-embedding-ada-002', // Optimized for embeddings
-            'input' => $userMessage,
-        ]);
+        $userEmbedding = $this->embeddingService->generateEmbeddings($userMessage);
 
-        $userEmbedding =  $response['data'][0]['embedding'];
         // Step 2: Find the most relevant context from the database
-           return $relevantContext = $this->embeddingService->searchEmbeddings($userEmbedding);
-        //return json_encode($relevantContext[0]['text']);
-         // $contextText = implode("\n", array_column($relevantContext, 'metadata'));
+          return $relevantContext = $this->embeddingService->findRelevantContext($userEmbedding);
+
+         $contextText = implode("\n", array_column($relevantContext, 'text'));
 
         //Step 3: Perform chat completion with context
         $gptResponse = $this->client->chat()->create([

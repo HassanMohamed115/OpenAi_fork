@@ -10,11 +10,12 @@ class ChatWithEmbeddingsController extends Controller
 {
     protected $embeddingService;
     protected $client;
-
+    private $UserId;
     public function __construct(EmbeddingService $embeddingService)
     {
         $this->embeddingService = $embeddingService;
         $this->client = OpenAI::client(env('OPENAI_API_KEY'));
+        //$this->UserId = auth()->id() ?? 'guest'; // Retrieve authenticated user ID or set to 'guest' for unauthenticated users.
     }
 
     public function index()
@@ -51,13 +52,18 @@ class ChatWithEmbeddingsController extends Controller
         // echo "data: " . json_encode(['message' => 'Streaming started...']) . "\n\n";
         // flush();
 
-        //Step 1: Generate embeddings for the user message
-        $userEmbedding = $this->embeddingService->generateEmbeddings($userMessage);
+       // Step 1: Generate embeddings for the user message
+        //$userEmbedding = $this->embeddingService->generateEmbeddings($userMessage);
+        $response = $this->client->embeddings()->create([
+            'model' => 'text-embedding-ada-002', // Optimized for embeddings
+            'input' => $userMessage,
+        ]);
 
+        $userEmbedding =  $response['data'][0]['embedding'];
         // Step 2: Find the most relevant context from the database
          $relevantContext = $this->embeddingService->findRelevantContext($userEmbedding);
 
-        $contextText = implode("\n", array_column($relevantContext, 'text'));
+        //$contextText = implode("\n", array_column($relevantContext, 'text'));
 
         // //Step 3: Perform chat completion with context
         // $chatResponse = $this->client->chat()->create([
@@ -91,21 +97,22 @@ class ChatWithEmbeddingsController extends Controller
 
         // return back()->with('response', $gptResponse)->with('message', $userMessage);
 
-        return response()->stream(function () use ($userMessage,$relevantContext) {
+        return response()->stream(function () use ($userMessage,$contextText) {
 
             // Step 2: Start streaming
-            $delay = 50; // You can adjust the delay (in seconds)
+            $delay = 0.5; // You can adjust the delay (in seconds)
 
             // Step 3: OpenAI API with streaming enabled
             $stream = $this->client->chat()->createStreamed([
-                'model' => 'gpt-4',
+                'model' => 'gpt-4o',
                 'messages' => [
                     ['role' => 'system', 'content' => 'You are a helpful assistant that uses relevant stored context to answer questions.'],
                     ['role' => 'system', 'content' => "Relevant context:\n" . json_encode($relevantContext)],
                     ['role' => 'user', 'content' => $userMessage],
                 ],
-                'max_tokens' => 250,
+                'max_tokens' => 1000,
                 'stream' => true,
+                //'user' => (string)$this->UserId
             ]);
 
             // Step 4: Stream chunks to the client
@@ -113,10 +120,9 @@ class ChatWithEmbeddingsController extends Controller
                 $chunk = $response->choices[0]->delta->content ?? '';
                 if ($chunk) {
                     echo "data: " . json_encode(['message' => $chunk]) . "\n\n";
-                    flush(); // Ensure the message is sent immediately to the client
+                    flush();     // Ensure the message is sent immediately to the client
                     ob_flush();
-                    // Sleep for the specified delay before sending the next character
-                    usleep($delay * 1000); // Delay in microseconds (0.5 sec = 500000)
+                    usleep($delay * 100000);  // Sleep for the specified delay before sending the next chunk
 
                 }
             }

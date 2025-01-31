@@ -21,7 +21,7 @@ class ChatController extends Controller
         // ]);
 
         // $userQuery = $request->input('query');
-        $userQuery = 'what is php';
+        $userQuery = 'ادينى نبذة عن المشاريع اللى عندكم';
         $response = $this->openAIService->processUserQuery($userQuery);
         
         //dd($response);
