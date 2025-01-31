@@ -91,7 +91,7 @@ class ChatWithEmbeddingsController extends Controller
 
         // return back()->with('response', $gptResponse)->with('message', $userMessage);
 
-        return response()->stream(function () use ($userMessage,$contextText) {
+        return response()->stream(function () use ($userMessage,$relevantContext) {
 
             // Step 2: Start streaming
             $delay = 50; // You can adjust the delay (in seconds)
@@ -101,7 +101,7 @@ class ChatWithEmbeddingsController extends Controller
                 'model' => 'gpt-4',
                 'messages' => [
                     ['role' => 'system', 'content' => 'You are a helpful assistant that uses relevant stored context to answer questions.'],
-                    ['role' => 'system', 'content' => "Relevant context:\n" . $contextText],
+                    ['role' => 'system', 'content' => "Relevant context:\n" . json_encode($relevantContext)],
                     ['role' => 'user', 'content' => $userMessage],
                 ],
                 'max_tokens' => 250,
